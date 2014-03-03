@@ -1,7 +1,8 @@
 //client side network module
-function Network(world){
+function Network(socket){
 	this.socket = socket;
-	this.world = world;
+	this.networkObjects = {}
+	this.events = new EventEmitter();
 
 	var that = this;
 	this.socket.on('objectlist', function(data){ that.receiveObjectList(data); } );
@@ -11,14 +12,14 @@ function Network(world){
 Network.prototype.resolveNetIDs = function(obj){
 	//for each property of this object, check it for netid, if so, reference the net id in the world
 	//results in reference based structure
-	var WorldData = this.world.WorldData;
+	var networkObjects = this.networkObjects;
 
 	for(var prop in obj){
 		var pobj = obj[prop];
 		try {
 		if(pobj._netid_ptr !== undefined){
 			//console.log(obj[prop])
-			obj[prop] = WorldData[pobj._netid_ptr];
+			obj[prop] = networkObjects[pobj._netid_ptr];
 			//console.log(obj[prop])
 		} 
 	} catch (errx){}
@@ -33,25 +34,24 @@ Network.prototype.resolveNetIDs = function(obj){
 Network.prototype.receiveObjectList = function(data){
     //console.log("object list:");
     //console.log(data);
-    var WorldData = this.world.WorldData;
+    var networkObjects = this.networkObjects;
+
     for(d in data){
-      //console.log(data[d])
-      WorldData[data[d].netid] = data[d].data;
+      networkObjects[data[d].name] = data[d].data;
     }
-    //console.log(WorldData)
+    
     //resolve any netid pointers
-    for(d in WorldData){
-      this.resolveNetIDs(WorldData[d]);
+    for(d in networkObjects){
+      this.resolveNetIDs(networkObjects[d]);
     }
-    //WorldData[0].primaryShip.x = 100; //tests the references
-    //console.log(WorldData)
-    world.events.emit("init");
+
+    this.events.emit("init", networkObjects);
 }
 
 Network.prototype.receiveObjectUpdate = function(data){
 	//console.log("object update");
 	//console.log(data);
-	var WorldData = this.world.WorldData;
+	var networkObjects = this.networkObjects;
 
 	//send ping back immediately since we'll block processing and we can use it to measure how long this takes
 	//d = new Date();
@@ -62,24 +62,24 @@ Network.prototype.receiveObjectUpdate = function(data){
 	//update loop
 	for(d in data){
 		//WorldData[data[d].netid] = data[d].data
-		var netid = data[d].netid;
+		var netid = data[d].name;
 
-		if(WorldData[netid] === undefined){ //new object received
-			WorldData[netid] = data[d].data;
+		if(networkObjects[netid] === undefined){ //new object received
+			networkObjects[netid] = data[d].data;
 		} else {
 			//update to existing object
 			var obj = data[d].data;
 			for(prop in obj){
-				WorldData[netid][prop] = obj[prop];
+				networkObjects[netid][prop] = obj[prop];
 				//console.log("updating prop: "+prop+" = "+obj[prop]);
 			}
 		}
 	}
 
 	//fix up any pointers
-	for(d in WorldData){
-		this.resolveNetIDs(WorldData[d]);	
+	for(d in networkObjects){
+		this.resolveNetIDs(networkObjects[d]);	
 	}
 
-	world.events.emit("update");
+	this.events.emit("update", networkObjects);
 }

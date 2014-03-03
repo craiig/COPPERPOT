@@ -3,6 +3,7 @@ var fs = require('fs')
 var express = require('express')
 var http = require('http');
 var world = require('./gameServer.js');
+var network = require('./network.js')
 
 var app = express()
 
@@ -14,4 +15,4 @@ app.use('/static', express.static(__dirname + '/static'));
 app.use('/', express.static(__dirname + '/client'));
 
 //instantiate the world object - which includes a network channel
-var world = new world(io);
+var world = new world(new network(io));

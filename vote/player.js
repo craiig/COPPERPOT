@@ -12,19 +12,17 @@ function Player(world, socket){
 	this.socket = socket;
 	playerCount++;
 	this.name = "space derp " + playerCount;
-	this.area=undefined;
-	world.netchan.registerObject(this);
 
 	this.on("player_name_set", function(player, data){ 
 		if(data.name != undefined){
 			player.name = name;
 		}
 	} );
-
 }
 
+//crashes without sync props because some properties can't be sent
 Player.prototype.getSyncProps = function(){
-	return ['name','area'];
+	return ['name'];
 }
 
 //shim into the event callback so we can insert the player message

@@ -13,65 +13,46 @@ var events = require('events');
 
 exports = module.exports = GameServer;
 
-function GameServer(io) {
+function GameServer(network) {
 	this.GameServerTime = 0;
-	this.clients = 0;
-	this.io = io;
 	this.lastUpdate = (new Date()).getTime(); //last update time
-	this.playerList = new Array();
-	this.areaList = new Array();	
-	this.netchan = new network(this);
-	this.netchan.registerObject(this);
+	this.playerList = new Array();	
 
 	//register some callbacks - this is annoying to do this way, but our other options are way worse: http://www.dustindiaz.com/scoping-anonymous-functions/
-
 	var that = this;
-	
 	setInterval( function(){that.update()}, 1000); //1 fps
 
-	this.io.sockets.on('connection', function(socket){ that.newConnection(socket) });
+	this.network = network; //network object
+	this.network.registerObject("GameServer", this);
+	this.network.on('connection', function(socket){ that.newConnection(socket) });
 };
 
 
 GameServer.prototype.getSyncProps = function(){
-	return ['GameServerTime'];
+	//list of properties that the network object syncs
+	return ['GameServerTime', 'playerList'];
 };
 
-//inherit from event emitter thingy?
+//inherit from event emitter so we can dispatch events
 GameServer.prototype.__proto__ = events.EventEmitter.prototype; 
 
 GameServer.prototype.newConnection = function(socket){
-	this.clients++;
-
+	//create new player object and fire event
 	player = new Player(this, socket);
 	this.playerList.push(player);
-
-	this.emit("newplayer", player);
-
-	//setup any other notifications
-	var that = this;
-	socket.on("ping", function(data){
-		socket.emit("ping", data);
-	})
-
-	//setup any other notifications
-	var that = this;
-	socket.on('disconnect', function(socket){ that.clients--; });
 };
-GameServer.prototype.onDisconnect = function(socket) {
-	this.clients--;
-}
 
 GameServer.prototype.update = function(){
 	this.GameServerTime++;
+
 	var newTime = (new Date()).getTime()
 	var timeDiff = newTime - this.lastUpdate;
 	this.lastUpdate = newTime;
 
 	var sTimeDiff = timeDiff / 1000; //convert to seconds
 	
-	this.emit("update", sTimeDiff);
+	this.emit("update", sTimeDiff); //fire an event
 	
 	//update our network channel
-	this.netchan.update();
+	this.network.update();
 };

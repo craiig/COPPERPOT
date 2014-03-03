@@ -12,16 +12,6 @@
 var socket = io.connect(location.hostname); 
 var world = new World(socket);
 
-world.events.on("init", function(){ 
-		console.log(world.WorldData)
-	});
-
-world.events.on("update", function(){ 
-		//console.log(world.WorldData);
-		//console.log(world.worldData.length);
-});
-
-
 //example: send a network obj rpc for testing
 //world.socket.emit("network_objrpc", {objid:1,eventname:'attach_to_ship'});
 
